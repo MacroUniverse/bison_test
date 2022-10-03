@@ -1,34 +1,32 @@
 %{
-#include <math.h>  /* For math functions, cos(), sin(), etc. */
-#include <stdio.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
+#include <bits/stdc++.h>
+using namespace std;
 
 // value type of a symbol
-typedef union {
+union val_t
+{
   double var; // value of a VAR
-  double (*p_fun)(); // value of a FNCT
-} val_t;
+  double (*p_fun)(double); // value of a FNCT
+};
 
 /* definition of `symb'        */
 /* Data type for links in the chain of symbols.      */
-typedef struct
+struct symb
 {
-  char *s_name;
+  string s_name;
   int s_type;  // VAR or FNCT
   val_t s_value;
   struct symb *next;
-} symb;
+};
 
 /* Head node of the symbol table: a chain of `struct symb'.  */
 symb *sym_table = NULL;
 
-symb *putsym();
-symb *getsym();
+symb *putsym(const string &sym_name, int sym_type);
+symb *getsym(const string &sym_name);
 
 int yylex(); // the lexer
-void yyerror(char *);
+void yyerror(const string &);
 %}
 
 // ### YYSTYPE ###
@@ -89,13 +87,13 @@ expr:     NUM                 { $$ = $1;                         }
 %% /* End of grammar */
 
 /* Called by yyparse on error */
-void yyerror(char *s) { printf("%s\n", s); }
+void yyerror(const string &s) { cout << s << endl; }
 
 // temporary struct
 struct Temp
 {
-  char *fname;
-  double (*fnct)();
+  string fname;
+  double (*fnct)(double);
 };
 
 // put arithmetic functions in table
@@ -106,11 +104,11 @@ void init_table()
       "sin", sin,   "cos", cos,   "tan", tan,
       "atan", atan, "log", log,   "log2", log2,
       "exp", exp,   "sqrt", sqrt, "abs", abs,
-      0, 0 // end
+      "", NULL // end
     };
   int i;
   symb *ptr;
-  for (i = 0; arith_fncts[i].fname != 0; i++)
+  for (i = 0; arith_fncts[i].fnct != NULL; i++)
   {
     ptr = putsym(arith_fncts[i].fname, FNCT);
     ptr->s_value.p_fun = arith_fncts[i].fnct;
@@ -118,11 +116,10 @@ void init_table()
 }
 
 // insert sym to the head of the sym_table linked list
-symb *putsym(char *sym_name, int sym_type)
+symb *putsym(const string &sym_name, int sym_type)
 {
   symb *ptr = (symb *) malloc(sizeof(symb));
-  ptr->s_name = (char *) malloc(strlen(sym_name) + 1);
-  strcpy(ptr->s_name, sym_name);
+  ptr->s_name = sym_name;
   ptr->s_type = sym_type;
   ptr->s_value.var = 0; // set value to 0 even if fctn.
   ptr->next = sym_table;
@@ -130,11 +127,11 @@ symb *putsym(char *sym_name, int sym_type)
   return ptr;
 }
 
-symb *getsym(char *sym_name)
+symb *getsym(const string &sym_name)
 {
   symb *ptr;
   for (ptr = sym_table; ptr != NULL; ptr = ptr->next)
-    if (strcmp(ptr->s_name,sym_name) == 0)
+    if (ptr->s_name == sym_name)
       return ptr;
   return NULL;
 }

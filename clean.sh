@@ -1,1 +1,1 @@
-rm -rf *.tab.c *calc
+rm -rf *.cpp *.x
