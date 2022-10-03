@@ -7,9 +7,9 @@
 
 // value type of a symbol
 typedef union {
-    double var;           /* value of a VAR          */
-    double (*p_fun)();  /* value of a FNCT         */
-  } val_t;
+  double var; // value of a VAR
+  double (*p_fun)(); // value of a FNCT
+} val_t;
 
 /* definition of `symb'        */
 /* Data type for links in the chain of symbols.      */
@@ -18,7 +18,7 @@ typedef struct
   char *s_name;
   int s_type;  // VAR or FNCT
   val_t s_value;
-  struct symb *next;    /* link field              */
+  struct symb *next;
 } symb;
 
 /* Head node of the symbol table: a chain of `struct symb'.  */
@@ -27,14 +27,16 @@ symb *sym_table = NULL;
 symb *putsym();
 symb *getsym();
 
-int yylex();
+int yylex(); // the lexer
 void yyerror(char *);
 %}
 
-// definition of YYSTYPE -- the class for `yylval` for the lexer
+// ### YYSTYPE ###
+// definition of possible value types of all tokens
+// the lexer will set the value of each token to `YYSTYPE yylval`
 %union {
-  double val;  /* For returning numbers.                   */
-  symb *p_symb;   /* For returning symbol-table pointers      */
+  double double_val;  // for NUM
+  symb *p_symb; // for VAR, FNCT
 }
 
 /* ALL TOKENS */
@@ -44,21 +46,20 @@ void yyerror(char *);
 // (implicit) single char operator
 
 // members of `enum yytokentype {};`, aliased `yytoken_kind_t`
-//     type
-%token <val>  NUM        /* Simple double precision number   */
-%token <p_symb> VAR FNCT   /* Variable and Function            */
-%type  <val>  expr
+%token <double_val>  NUM
+%token <p_symb>      VAR FNCT
+%type  <double_val>  expr
 
 // order determins precidence
-%right '='
+%right '='  // right association
 %left '-' '+'
 %left '*' '/'
-%left NEG     /* Negation--unary minus */
-%right '^'    /* Exponential           */
+%left NEG // prefixed -
+%right '^'
 
-/* Grammar follows */
 
-%%
+%% /* Grammar starts */
+
 input:   /* empty */
         | input line
 ;
@@ -69,10 +70,12 @@ line:
         | error '\n' { yyerrok;                 }
 ;
 
-// types of $1, $2 etc are YYSTYPE
+// types of $$, $1, $2 etc are one of YYSTYPE, i.e. yylval.double_val or yylval.p_symb
+// depending on the token
+// '+', '-', etc. don't have values and are omitted
 expr:     NUM                 { $$ = $1;                         }
-        | VAR                 { $$ = $1->s_value.var;              }
-        | VAR '=' expr        { $$ = $3; $1->s_value.var = $3;     }
+        | VAR                 { $$ = $1->s_value.var;            }
+        | VAR '=' expr        { $$ = $3; $1->s_value.var = $3;   }
         | FNCT '(' expr ')'   { $$ = (*($1->s_value.p_fun))($3); }
         | expr '+' expr       { $$ = $1 + $3;                    }
         | expr '-' expr       { $$ = $1 - $3;                    }
@@ -82,31 +85,28 @@ expr:     NUM                 { $$ = $1;                         }
         | expr '^' expr       { $$ = pow($1, $3);                }
         | '(' expr ')'        { $$ = $2;                         }
 ;
-/* End of grammar */
-%%
+
+%% /* End of grammar */
 
 /* Called by yyparse on error */
 void yyerror(char *s) { printf("%s\n", s); }
 
+// temporary struct
 struct Temp
 {
   char *fname;
   double (*fnct)();
 };
 
-void init_table()  /* puts arithmetic functions in table. */
+// put arithmetic functions in table
+void init_table()
 {
   struct Temp arith_fncts[]
   = {
-      "sin", sin,
-      "cos", cos,
-      "tan", tan,
-      "atan", atan,
-      "log", log,
-      "log2", log2,
-      "exp", exp,
-      "sqrt", sqrt,
-      0, 0
+      "sin", sin,   "cos", cos,   "tan", tan,
+      "atan", atan, "log", log,   "log2", log2,
+      "exp", exp,   "sqrt", sqrt, "abs", abs,
+      0, 0 // end
     };
   int i;
   symb *ptr;
@@ -140,7 +140,7 @@ symb *getsym(char *sym_name)
 }
 
 // return NUM, VAR, FUN or 0 (for EOF),
-//   and set yylval.val for NUM and yylval.p_symb
+//   and set yylval.double_val for NUM and yylval.p_symb
 // or ascii code for single character token
 int yylex()
 {
@@ -153,7 +153,7 @@ int yylex()
   // Char starts a number => parse the number.
   if (c == '.' || isdigit(c)) {
     ungetc(c, stdin);
-    scanf("%lf", &yylval.val);
+    scanf("%lf", &yylval.double_val);
     return NUM;
   }
 
