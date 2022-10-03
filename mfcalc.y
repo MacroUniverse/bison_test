@@ -22,15 +22,16 @@ typedef struct symrec symrec;
 /* The symbol table: a chain of `struct symrec'.     */
 extern symrec *sym_table;
 
-symrec *putsym ();
-symrec *getsym ();
+symrec *putsym();
+symrec *getsym();
 
 int yylex();
 void yyerror(char *);
 %}
+
 %union {
-double     val;  /* For returning numbers.                   */
-symrec  *tptr;   /* For returning symbol-table pointers      */
+double val;  /* For returning numbers.                   */
+symrec *tptr;   /* For returning symbol-table pointers      */
 }
 
 %token <val>  NUM        /* Simple double precision number   */
@@ -41,7 +42,7 @@ symrec  *tptr;   /* For returning symbol-table pointers      */
 %left '-' '+'
 %left '*' '/'
 %left NEG     /* Negation--unary minus */
-%right '^'    /* Exponentiation        */
+%right '^'    /* Exponential           */
 
 /* Grammar follows */
 
@@ -52,8 +53,8 @@ input:   /* empty */
 
 line:
           '\n'
-        | exp '\n'   { printf ("\t%.10g\n", $1); }
-        | error '\n' { yyerrok;                  }
+        | exp '\n'   { printf("\t%.16g\n", $1); }
+        | error '\n' { yyerrok;                 }
 ;
 
 exp:      NUM                { $$ = $1;                         }
@@ -65,16 +66,14 @@ exp:      NUM                { $$ = $1;                         }
         | exp '*' exp        { $$ = $1 * $3;                    }
         | exp '/' exp        { $$ = $1 / $3;                    }
         | '-' exp  %prec NEG { $$ = -$2;                        }
-        | exp '^' exp        { $$ = pow ($1, $3);               }
+        | exp '^' exp        { $$ = pow($1, $3);                }
         | '(' exp ')'        { $$ = $2;                         }
 ;
 /* End of grammar */
 %%
 
 void yyerror(char *s)  /* Called by yyparse on error */
-{
-  printf("%s\n", s);
-}
+{ printf("%s\n", s); }
 
 struct init
 {
@@ -86,8 +85,10 @@ struct init arith_fncts[]
   = {
       "sin", sin,
       "cos", cos,
+      "tan", tan,
       "atan", atan,
-      "ln", log,
+      "log", log,
+      "log2", log2,
       "exp", exp,
       "sqrt", sqrt,
       0, 0
@@ -102,17 +103,17 @@ void init_table()  /* puts arithmetic functions in table. */
   symrec *ptr;
   for (i = 0; arith_fncts[i].fname != 0; i++)
   {
-    ptr = putsym (arith_fncts[i].fname, FNCT);
+    ptr = putsym(arith_fncts[i].fname, FNCT);
     ptr->value.fnctptr = arith_fncts[i].fnct;
   }
 }
 
-symrec *putsym (char *sym_name, int sym_type)
+symrec *putsym(char *sym_name, int sym_type)
 {
   symrec *ptr;
-  ptr = (symrec *) malloc (sizeof (symrec));
-  ptr->name = (char *) malloc (strlen(sym_name) + 1);
-  strcpy (ptr->name,sym_name);
+  ptr = (symrec *) malloc(sizeof(symrec));
+  ptr->name = (char *) malloc(strlen(sym_name) + 1);
+  strcpy(ptr->name,sym_name);
   ptr->type = sym_type;
   ptr->value.var = 0; /* set value to 0 even if fctn.  */
   ptr->next = (struct symrec *)sym_table;
@@ -120,13 +121,13 @@ symrec *putsym (char *sym_name, int sym_type)
   return ptr;
 }
 
-symrec *getsym (sym_name)
+symrec *getsym(sym_name)
      char *sym_name;
 {
   symrec *ptr;
   for (ptr = sym_table; ptr != (symrec *) 0;
        ptr = (symrec *)ptr->next)
-    if (strcmp (ptr->name,sym_name) == 0)
+    if (strcmp(ptr->name,sym_name) == 0)
       return ptr;
   return 0;
 }
@@ -136,21 +137,21 @@ int yylex()
   int c;
 
   /* Ignore whitespace, get first nonwhite character.  */
-  while ((c = getchar ()) == ' ' || c == '\t');
+  while ((c = getchar()) == ' ' || c == '\t');
 
   if (c == EOF)
     return 0;
 
   /* Char starts a number => parse the number.         */
-  if (c == '.' || isdigit (c))
+  if (c == '.' || isdigit(c))
     {
-      ungetc (c, stdin);
-      scanf ("%lf", &yylval.val);
+      ungetc(c, stdin);
+      scanf("%lf", &yylval.val);
       return NUM;
     }
 
   /* Char starts an identifier => read the name.       */
-  if (isalpha (c))
+  if (isalpha(c))
     {
       symrec *s;
       static char *symbuf = 0;
@@ -160,7 +161,7 @@ int yylex()
       /* Initially make the buffer long enough
          for a 40-character symbol name.  */
       if (length == 0)
-        length = 40, symbuf = (char *)malloc (length + 1);
+        length = 40, symbuf = (char *)malloc(length + 1);
 
       i = 0;
       do
@@ -174,16 +175,16 @@ int yylex()
           /* Add this character to the buffer.         */
           symbuf[i++] = c;
           /* Get another character.                    */
-          c = getchar ();
+          c = getchar();
         }
-      while (c != EOF && isalnum (c));
+      while (c != EOF && isalnum(c));
 
       ungetc (c, stdin);
       symbuf[i] = '\0';
 
-      s = getsym (symbuf);
+      s = getsym(symbuf);
       if (s == 0)
-        s = putsym (symbuf, VAR);
+        s = putsym(symbuf, VAR);
       yylval.tptr = s;
       return s->type;
     }
