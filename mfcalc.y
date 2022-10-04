@@ -13,10 +13,10 @@ union symb_val_t
 /* Data type for links in the chain of symbols.      */
 struct symb
 {
-  string s_name;
-  int s_type;  // VAR or FNCT
-  symb_val_t s_val;
-  struct symb *next;
+  string symb_name;
+  int symb_type;  // VAR or FNCT
+  symb_val_t symb_val;
+  struct symb *symb_next;
 };
 
 /* Head node of the symbol table: a chain of `struct symb'.  */
@@ -45,7 +45,7 @@ void yyerror(const string &);
 
 // members of `enum yytokentype {};`, aliased `yytoken_kind_t`
 %token <token_val_as_doub>  NUM
-%token <token_val_as_symb>      VAR FNCT
+%token <token_val_as_symb>  VAR FNCT
 %type  <token_val_as_doub>  expr
 
 // order determins precidence
@@ -64,24 +64,24 @@ input:   /* empty */
 
 line:
           '\n'
-        | expr '\n'   { printf("\t%.16g\n", $1); }
-        | error '\n' { yyerrok;                 }
+        | expr '\n'  { cout << "ans = " << $1 << endl << ">> "; }
+        | error '\n' { yyerrok; }
 ;
 
 // types of $$, $1, $2 etc are one of YYSTYPE, i.e. yylval.token_val_as_doub or yylval.token_val_as_symb
 // depending on the token
 // '+', '-', etc. don't have values and are omitted
-expr:     NUM                 { $$ = $1;                         }
-        | VAR                 { $$ = $1->s_val.symb_val_as_var;            }
-        | VAR '=' expr        { $$ = $3; $1->s_val.symb_val_as_var = $3;   }
-        | FNCT '(' expr ')'   { $$ = (*($1->s_val.symb_val_as_fun))($3); }
-        | expr '+' expr       { $$ = $1 + $3;                    }
-        | expr '-' expr       { $$ = $1 - $3;                    }
-        | expr '*' expr       { $$ = $1 * $3;                    }
-        | expr '/' expr       { $$ = $1 / $3;                    }
-        | '-' expr  %prec NEG { $$ = -$2;                        }
-        | expr '^' expr       { $$ = pow($1, $3);                }
-        | '(' expr ')'        { $$ = $2;                         }
+expr:     NUM                 { $$ = $1; }
+        | VAR                 { $$ = $1->symb_val.symb_val_as_var; }
+        | VAR '=' expr        { $$ = $3; $1->symb_val.symb_val_as_var = $3; }
+        | FNCT '(' expr ')'   { $$ = (*($1->symb_val.symb_val_as_fun))($3); }
+        | expr '+' expr       { $$ = $1 + $3; }
+        | expr '-' expr       { $$ = $1 - $3; }
+        | expr '*' expr       { $$ = $1 * $3; }
+        | expr '/' expr       { $$ = $1 / $3; }
+        | '-' expr  %prec NEG { $$ = -$2; }
+        | expr '^' expr       { $$ = pow($1, $3); }
+        | '(' expr ')'        { $$ = $2; }
 ;
 
 %% /* End of grammar */
@@ -111,7 +111,7 @@ void init_table()
   for (i = 0; arith_fncts[i].fnct != NULL; i++)
   {
     ptr = putsym(arith_fncts[i].fname, FNCT);
-    ptr->s_val.symb_val_as_fun = arith_fncts[i].fnct;
+    ptr->symb_val.symb_val_as_fun = arith_fncts[i].fnct;
   }
 }
 
@@ -119,10 +119,10 @@ void init_table()
 symb *putsym(const string &sym_name, int sym_type)
 {
   symb *ptr = (symb *) malloc(sizeof(symb));
-  ptr->s_name = sym_name;
-  ptr->s_type = sym_type;
-  ptr->s_val.symb_val_as_var = 0; // set value to 0 even if fctn.
-  ptr->next = sym_table;
+  ptr->symb_name = sym_name;
+  ptr->symb_type = sym_type;
+  ptr->symb_val.symb_val_as_var = 0; // set value to 0 even if fctn.
+  ptr->symb_next = sym_table;
   sym_table = ptr;
   return ptr;
 }
@@ -130,8 +130,8 @@ symb *putsym(const string &sym_name, int sym_type)
 symb *getsym(const string &sym_name)
 {
   symb *ptr;
-  for (ptr = sym_table; ptr != NULL; ptr = ptr->next)
-    if (ptr->s_name == sym_name)
+  for (ptr = sym_table; ptr != NULL; ptr = ptr->symb_next)
+    if (ptr->symb_name == sym_name)
       return ptr;
   return NULL;
 }
@@ -185,7 +185,7 @@ int yylex()
     if (s == 0)
       s = putsym(sym_name, VAR);
     yylval.token_val_as_symb = s;
-    return s->s_type;
+    return s->symb_type;
   }
 
   /* Any other character is a token by itself. */
@@ -195,6 +195,7 @@ int yylex()
 int main()
 {
   init_table();
+  cout << ">> ";
   yyparse();
   return 0;
 }
