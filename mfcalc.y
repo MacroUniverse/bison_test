@@ -137,10 +137,12 @@ symb *getsym(const string &sym_name)
 }
 
 // return NUM, VAR, FUN or 0 (for EOF),
-//   and set yylval.token_val_as_doub for NUM and yylval.token_val_as_symb
+//   and set yylval.token_val_as_doub for NUM and yylval.token_val_as_symb for VAR and FUN
 // or ascii code for single character token
 int yylex()
 {
+  static string sym_name; sym_name.reserve(40);
+  static int length = 0;
   int c;
 
   // ignore whitespace
@@ -156,29 +158,14 @@ int yylex()
 
   // Char starts an identifier => read the name.
   if (isalpha(c)) {
-    static char *sym_name = NULL;
-    static int length = 0;
-    int i;
-
-    if (length == 0)
-      length = 40, sym_name = (char *)malloc(length + 1);
-
-    i = 0;
+    sym_name.clear();
     do {
-      // if buffer is full, make it bigger.
-      if (i == length) {
-        length *= 2;
-        sym_name = (char *)realloc(sym_name, length+1);
-      }
-      /* Add this character to the buffer.         */
-      sym_name[i++] = c;
-      /* Get another character.                    */
+      sym_name += c;
       c = getchar();
     }
     while (c != EOF && isalnum(c));
 
     ungetc(c, stdin);
-    sym_name[i] = '\0';
 
     // new symbols must be a variable name!
     symb *s = getsym(sym_name);
@@ -188,7 +175,7 @@ int yylex()
     return s->symb_type;
   }
 
-  /* Any other character is a token by itself. */
+  // Any other character is a token by itself
   return c;
 }
 
