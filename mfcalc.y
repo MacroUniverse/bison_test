@@ -38,11 +38,7 @@ void yyerror(const string &);
 }
 
 /* ALL TOKENS */
-// NUM -> double
-// VAR -> token_val_as_symb
-// FNCT -> token_val_as_symb
-// (implicit) single char operator
-
+// single char tokens are implicit
 // members of `enum yytokentype {};`, aliased `yytoken_kind_t`
 %token <token_val_as_doub>  NUM
 %token <token_val_as_symb>  VAR FNCT
@@ -54,7 +50,6 @@ void yyerror(const string &);
 %left '*' '/'
 %left NEG // prefixed -
 %right '^'
-
 
 %% /* Grammar starts */
 
@@ -99,13 +94,13 @@ struct Temp
 // put arithmetic functions in table
 void init_table()
 {
-  struct Temp arith_fncts[]
-  = {
-      "sin", sin,   "cos", cos,   "tan", tan,
-      "atan", atan, "log", log,   "log2", log2,
-      "exp", exp,   "sqrt", sqrt, "abs", abs,
-      "", NULL // end
-    };
+  struct Temp arith_fncts[] =
+  {
+    "sin", sin,   "cos", cos,   "tan", tan,
+    "atan", atan, "log", log,   "log2", log2,
+    "exp", exp,   "sqrt", sqrt, "abs", abs,
+    "", NULL // end
+  };
   int i;
   symb *ptr;
   for (i = 0; arith_fncts[i].fnct != NULL; i++)
@@ -137,7 +132,8 @@ symb *getsym(const string &sym_name)
 }
 
 // return NUM, VAR, FUN or 0 (for EOF),
-//   and set yylval.token_val_as_doub for NUM and yylval.token_val_as_symb for VAR and FUN
+//   and set yylval.token_val_as_doub for NUM
+//   and set yylval.token_val_as_symb for VAR and FUN
 // or ascii code for single character token
 int yylex()
 {
