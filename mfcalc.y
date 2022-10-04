@@ -2,28 +2,23 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// value type of a symbol
+typedef double (*pfun_1doub)(double);
+
+// value type of a symb
 union symb_val_t
 {
-  double symb_val_as_var; // value of a VAR
-  double (*symb_val_as_fun)(double); // value of a FNCT
+  double     symb_val_as_var; // value of a VAR
+  pfun_1doub symb_val_as_fun; // value of a FNCT
 };
 
-/* definition of `symb'        */
-/* Data type for links in the chain of symbols.      */
 struct symb
 {
-  string symb_name;
   int symb_type;  // VAR or FNCT
   symb_val_t symb_val;
-  struct symb *symb_next;
 };
 
-/* Head node of the symbol table: a chain of `struct symb'.  */
-symb *sym_table = NULL;
-
-symb *putsym(const string &sym_name, int sym_type);
-symb *getsym(const string &sym_name);
+// symbol table for VAR and FNCT
+map<string, symb> symb_table;
 
 int yylex(); // the lexer
 void yyerror(const string &);
@@ -34,7 +29,7 @@ void yyerror(const string &);
 // the lexer will set the value of each token to `YYSTYPE yylval`
 %union {
   double token_val_as_doub;  // for NUM
-  symb *token_val_as_symb; // for VAR, FNCT
+  symb  *token_val_as_symb;  // for VAR, FNCT
 }
 
 /* ALL TOKENS */
@@ -79,56 +74,30 @@ expr:     NUM                 { $$ = $1; }
         | '(' expr ')'        { $$ = $2; }
 ;
 
-%% /* End of grammar */
+%% /* end of grammar */
 
 /* Called by yyparse on error */
 void yyerror(const string &s) { cout << s << endl; }
 
-// temporary struct
-struct Temp
-{
-  string fname;
-  double (*fnct)(double);
-};
-
 // put arithmetic functions in table
 void init_table()
 {
-  struct Temp arith_fncts[] =
+  struct Temp
   {
-    "sin", sin,   "cos", cos,   "tan", tan,
-    "atan", atan, "log", log,   "log2", log2,
-    "exp", exp,   "sqrt", sqrt, "abs", abs,
-    "", NULL // end
+    string name;
+    pfun_1doub fun;
   };
-  int i;
-  symb *ptr;
-  for (i = 0; arith_fncts[i].fnct != NULL; i++)
+  Temp arith_fncts[] =
   {
-    ptr = putsym(arith_fncts[i].fname, FNCT);
-    ptr->symb_val.symb_val_as_fun = arith_fncts[i].fnct;
+    "sin",  sin,  "cos",  cos,  "tan",  tan,
+    "atan", atan, "log",  log,  "log2", log2,
+    "exp",  exp,  "sqrt", sqrt, "abs",  abs,
+  };
+  for (auto &e : arith_fncts) {
+    symb *ptr = &symb_table[e.name];
+    ptr->symb_type = FNCT;
+    ptr->symb_val.symb_val_as_fun = e.fun;
   }
-}
-
-// insert sym to the head of the sym_table linked list
-symb *putsym(const string &sym_name, int sym_type)
-{
-  symb *ptr = (symb *) malloc(sizeof(symb));
-  ptr->symb_name = sym_name;
-  ptr->symb_type = sym_type;
-  ptr->symb_val.symb_val_as_var = 0; // set value to 0 even if fctn.
-  ptr->symb_next = sym_table;
-  sym_table = ptr;
-  return ptr;
-}
-
-symb *getsym(const string &sym_name)
-{
-  symb *ptr;
-  for (ptr = sym_table; ptr != NULL; ptr = ptr->symb_next)
-    if (ptr->symb_name == sym_name)
-      return ptr;
-  return NULL;
 }
 
 // return NUM, VAR, FUN or 0 (for EOF),
@@ -145,14 +114,14 @@ int yylex()
   while ((c = getchar()) == ' ' || c == '\t');
   if (c == EOF) return 0;
 
-  // Char starts a number => parse the number.
+  // parse NUM
   if (c == '.' || isdigit(c)) {
     ungetc(c, stdin);
     scanf("%lf", &yylval.token_val_as_doub);
     return NUM;
   }
 
-  // Char starts an identifier => read the name.
+  // parse symb
   if (isalpha(c)) {
     sym_name.clear();
     do {
@@ -162,17 +131,20 @@ int yylex()
     while (c != EOF && isalnum(c));
 
     ungetc(c, stdin);
-
-    // new symbols must be a variable name!
-    symb *s = getsym(sym_name);
-    if (s == 0)
-      s = putsym(sym_name, VAR);
+    symb *s;
+    auto it = symb_table.find(sym_name);
+    if (it == symb_table.end()) {
+      // sym_name not found, add a VAR
+      s = &(it->second);
+      s->symb_type = VAR;
+    }
+    else // sym_name found
+      s = &(it->second);  
     yylval.token_val_as_symb = s;
     return s->symb_type;
   }
 
-  // Any other character is a token by itself
-  return c;
+  return c; // single char operator, no value
 }
 
 int main()
