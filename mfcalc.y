@@ -3,10 +3,10 @@
 using namespace std;
 
 // value type of a symbol
-union val_t
+union symb_val_t
 {
-  double var; // value of a VAR
-  double (*p_fun)(double); // value of a FNCT
+  double symb_val_as_var; // value of a VAR
+  double (*symb_val_as_fun)(double); // value of a FNCT
 };
 
 /* definition of `symb'        */
@@ -15,7 +15,7 @@ struct symb
 {
   string s_name;
   int s_type;  // VAR or FNCT
-  val_t s_value;
+  symb_val_t s_val;
   struct symb *next;
 };
 
@@ -33,20 +33,20 @@ void yyerror(const string &);
 // definition of possible value types of all tokens
 // the lexer will set the value of each token to `YYSTYPE yylval`
 %union {
-  double double_val;  // for NUM
-  symb *p_symb; // for VAR, FNCT
+  double token_val_as_doub;  // for NUM
+  symb *token_val_as_symb; // for VAR, FNCT
 }
 
 /* ALL TOKENS */
 // NUM -> double
-// VAR -> p_symb
-// FNCT -> p_symb
+// VAR -> token_val_as_symb
+// FNCT -> token_val_as_symb
 // (implicit) single char operator
 
 // members of `enum yytokentype {};`, aliased `yytoken_kind_t`
-%token <double_val>  NUM
-%token <p_symb>      VAR FNCT
-%type  <double_val>  expr
+%token <token_val_as_doub>  NUM
+%token <token_val_as_symb>      VAR FNCT
+%type  <token_val_as_doub>  expr
 
 // order determins precidence
 %right '='  // right association
@@ -68,13 +68,13 @@ line:
         | error '\n' { yyerrok;                 }
 ;
 
-// types of $$, $1, $2 etc are one of YYSTYPE, i.e. yylval.double_val or yylval.p_symb
+// types of $$, $1, $2 etc are one of YYSTYPE, i.e. yylval.token_val_as_doub or yylval.token_val_as_symb
 // depending on the token
 // '+', '-', etc. don't have values and are omitted
 expr:     NUM                 { $$ = $1;                         }
-        | VAR                 { $$ = $1->s_value.var;            }
-        | VAR '=' expr        { $$ = $3; $1->s_value.var = $3;   }
-        | FNCT '(' expr ')'   { $$ = (*($1->s_value.p_fun))($3); }
+        | VAR                 { $$ = $1->s_val.symb_val_as_var;            }
+        | VAR '=' expr        { $$ = $3; $1->s_val.symb_val_as_var = $3;   }
+        | FNCT '(' expr ')'   { $$ = (*($1->s_val.symb_val_as_fun))($3); }
         | expr '+' expr       { $$ = $1 + $3;                    }
         | expr '-' expr       { $$ = $1 - $3;                    }
         | expr '*' expr       { $$ = $1 * $3;                    }
@@ -111,7 +111,7 @@ void init_table()
   for (i = 0; arith_fncts[i].fnct != NULL; i++)
   {
     ptr = putsym(arith_fncts[i].fname, FNCT);
-    ptr->s_value.p_fun = arith_fncts[i].fnct;
+    ptr->s_val.symb_val_as_fun = arith_fncts[i].fnct;
   }
 }
 
@@ -121,7 +121,7 @@ symb *putsym(const string &sym_name, int sym_type)
   symb *ptr = (symb *) malloc(sizeof(symb));
   ptr->s_name = sym_name;
   ptr->s_type = sym_type;
-  ptr->s_value.var = 0; // set value to 0 even if fctn.
+  ptr->s_val.symb_val_as_var = 0; // set value to 0 even if fctn.
   ptr->next = sym_table;
   sym_table = ptr;
   return ptr;
@@ -137,7 +137,7 @@ symb *getsym(const string &sym_name)
 }
 
 // return NUM, VAR, FUN or 0 (for EOF),
-//   and set yylval.double_val for NUM and yylval.p_symb
+//   and set yylval.token_val_as_doub for NUM and yylval.token_val_as_symb
 // or ascii code for single character token
 int yylex()
 {
@@ -150,7 +150,7 @@ int yylex()
   // Char starts a number => parse the number.
   if (c == '.' || isdigit(c)) {
     ungetc(c, stdin);
-    scanf("%lf", &yylval.double_val);
+    scanf("%lf", &yylval.token_val_as_doub);
     return NUM;
   }
 
@@ -184,7 +184,7 @@ int yylex()
     symb *s = getsym(sym_name);
     if (s == 0)
       s = putsym(sym_name, VAR);
-    yylval.p_symb = s;
+    yylval.token_val_as_symb = s;
     return s->s_type;
   }
 
