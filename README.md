@@ -2,9 +2,11 @@ Learn to use GNU Bison
 
 `mfcalc.y` is adapted from the official `mfcalc` example on https://www.gnu.org/software/bison/manual/bison.html#Multi_002dfunction-Calc
 
+install bison: `sudo apt install bison`
+
 make: `./make.sh`
 
-run: `./mfcalc`
+run: `./mfcalc.x`
 
 demo:
 
