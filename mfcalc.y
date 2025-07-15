@@ -11,14 +11,15 @@ union symb_val_t
   pfun_1doub symb_val_as_fun; // value of a FNCT
 };
 
-struct symb
+// symbol type
+struct symb_t
 {
   int symb_type;  // VAR or FNCT
   symb_val_t symb_val;
 };
 
 // symbol table for VAR and FNCT
-map<string, symb> symb_table;
+map<string, symb_t> symb_table;
 
 int yylex(); // the lexer
 void yyerror(const string &);
@@ -29,7 +30,7 @@ void yyerror(const string &);
 // the lexer will set the value of each token to `YYSTYPE yylval`
 %union {
   double token_val_as_doub;  // for NUM
-  symb  *token_val_as_symb;  // for VAR, FNCT
+  symb_t  *token_val_as_symb;  // for VAR, FNCT
 }
 
 /* ALL TOKENS */
@@ -94,7 +95,7 @@ void init_table()
     "exp",  exp,  "sqrt", sqrt, "abs",  abs,
   };
   for (auto &e : arith_fncts) {
-    symb *ptr = &symb_table[e.name];
+    symb_t *ptr = &symb_table[e.name];
     ptr->symb_type = FNCT;
     ptr->symb_val.symb_val_as_fun = e.fun;
   }
@@ -131,7 +132,7 @@ int yylex()
     while (c != EOF && isalnum(c));
 
     ungetc(c, stdin);
-    symb *s;
+    symb_t *s;
     auto it = symb_table.find(sym_name);
     if (it == symb_table.end()) {
       // sym_name not found, add a VAR
