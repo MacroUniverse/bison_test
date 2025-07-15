@@ -117,8 +117,11 @@ int yylex()
   int c;
 
   // ignore whitespace
-  while ((c = getchar()) == ' ' || c == '\t');
-  if (c == EOF) return 0;
+  while ((c = getchar()) == ' ' || c == '\t')
+    ;
+
+  if (c == EOF)
+    return 0;
 
   // parse TOK_NUM
   if (c == '.' || isdigit(c)) {
@@ -127,27 +130,22 @@ int yylex()
     return TOK_NUM;
   }
 
-  // parse symb
+  // parse identifier
   if (isalpha(c)) {
-    sym_name.clear();
-    do {
-      sym_name += c;
-      c = getchar();
-    }
-    while (c != EOF && isalnum(c));
+      sym_name.clear();
+      do {
+          sym_name += c;
+          c = getchar();
+      } while (c != EOF && isalnum(c));
 
-    ungetc(c, stdin);
-    symb_t *s;
-    auto it = symb_table.find(sym_name);
-    if (it == symb_table.end()) {
-      // sym_name not found, add a TOK_VAR
-      s = &(it->second);
-      s->symb_type = TOK_VAR;
-    }
-    else // sym_name found
-      s = &(it->second);  
-    yylval.token_val_as_symb = s;
-    return s->symb_type;
+      ungetc(c, stdin);
+
+      symb_t *s = &symb_table[sym_name];  // inserts a default‑constructed entry
+      if (s->symb_type == 0)              // first time we see this name
+          s->symb_type = TOK_VAR;
+
+      yylval.token_val_as_symb = s;
+      return s->symb_type;
   }
 
   return c; // single char operator, no value
