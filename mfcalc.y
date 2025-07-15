@@ -1,5 +1,7 @@
 %{
 // ===== user prologue =========================
+// copied exactly from mfcalc.y
+
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -80,6 +82,9 @@ expr:     TOK_NUM                 { $$ = $1; }
 
 %% /* end of grammar */
 
+// ======= user epilogue =================================
+// copied exactly from mfcalc.y
+
 /* Called by yyparse on error */
 void yyerror(const string &s) { cout << s << endl; }
 
@@ -158,3 +163,5 @@ int main()
   yyparse();
   return 0;
 }
+
+// ======= end user epilogue =================================
