@@ -8,21 +8,21 @@ using namespace std;
 typedef double (*pfun_1doub)(double);
 
 // value type of a symb
-union symb_val_t
+union SymVal
 {
   double     symb_val_as_var; // value of a TOK_VAR
   pfun_1doub symb_val_as_fun; // value of a TOK_FNCT
 };
 
 // symbol (dynamic typing)
-struct symb_t
+struct Sym
 {
   int symb_type;  // TOK_VAR or TOK_FNCT
-  symb_val_t symb_val; // exact type determined by symb_type at runtime
+  SymVal symb_val; // exact type determined by symb_type at runtime
 };
 
 // symbol table for TOK_VAR and TOK_FNCT
-map<string, symb_t> symb_table;
+map<string, Sym> symb_table;
 
 int yylex(); // the lexer
 
@@ -35,7 +35,7 @@ void yyerror(const string &); // error handler
 // the lexer will set the value of each token to `YYSTYPE yylval` (yy l-value)
 %union {
   double token_val_as_doub;  // for TOK_NUM
-  symb_t  *token_val_as_symb;  // for TOK_VAR, TOK_FNCT
+  Sym  *token_val_as_symb;  // for TOK_VAR, TOK_FNCT
 }
 
 /* ALL TOKENS */
@@ -59,7 +59,7 @@ input:   /* empty */
 ;
 
 line:
-          '\n'
+          '\n' { cout << ">> "; }
         | expr '\n'  { cout << "ans = " << $1 << endl << ">> "; }
         | error '\n' { yyerrok; }
 ;
@@ -105,7 +105,7 @@ void init_table()
   };
 
   for (auto &e : arith_fncts) {
-    symb_t *ptr = &symb_table[e.name];
+    Sym *ptr = &symb_table[e.name];
     ptr->symb_type = TOK_FNCT;
     ptr->symb_val.symb_val_as_fun = e.fun;
   }
@@ -145,7 +145,7 @@ int yylex()
 
       ungetc(c, stdin);
 
-      symb_t *s = &symb_table[sym_name];  // inserts a default‑constructed entry
+      Sym *s = &symb_table[sym_name];  // inserts a default‑constructed entry
       if (s->symb_type == 0)              // first time we see this name
           s->symb_type = TOK_VAR;
 
