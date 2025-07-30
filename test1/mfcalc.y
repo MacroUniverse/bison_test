@@ -7,22 +7,22 @@ using namespace std;
 
 typedef double (*pfun_1doub)(double);
 
-// value type of a symb
+// value type of a sym
 union SymVal
 {
-  double     symb_val_as_var; // value of a TOK_VAR
-  pfun_1doub symb_val_as_fun; // value of a TOK_FNCT
+  double     sym_val_as_var; // value of a TOK_VAR
+  pfun_1doub sym_val_as_fun; // value of a TOK_FNCT
 };
 
 // symbol (dynamic typing)
 struct Sym
 {
-  int symb_type;  // TOK_VAR or TOK_FNCT
-  SymVal symb_val; // exact type determined by symb_type at runtime
+  int sym_type;  // TOK_VAR or TOK_FNCT
+  SymVal sym_val; // exact type determined by sym_type at runtime
 };
 
 // symbol table for TOK_VAR and TOK_FNCT
-map<string, Sym> symb_table;
+map<string, Sym> sym_table;
 
 int yylex(); // the lexer
 
@@ -30,19 +30,21 @@ void yyerror(const string &); // error handler
 // ===== end user prologue =========================
 %}
 
-// ### YYSTYPE ###
+// ### YYSTYPE (semantic value type) ###
 // definition of possible value types of all tokens
-// the lexer will set the value of each token to `YYSTYPE yylval` (yy l-value)
+// define `union YYSTYPE`
 %union {
+  // each TOK_* maps to one of these
   double token_val_as_doub;  // for TOK_NUM
-  Sym  *token_val_as_symb;  // for TOK_VAR, TOK_FNCT
+  Sym *token_val_as_sym;  // for TOK_VAR, TOK_FNCT
 }
+// the lexer should set the value of each token to `YYSTYPE yylval` (yy lexical value)
 
 /* ALL TOKENS */
 // single char tokens are implicit
-// members of `enum yytokentype {};`, aliased `yytoken_kind_t`
+// define members of `enum yytokentype {};`, aliased `yytoken_kind_t`
 %token <token_val_as_doub>  TOK_NUM
-%token <token_val_as_symb>  TOK_VAR TOK_FNCT
+%token <token_val_as_sym>  TOK_VAR TOK_FNCT
 %type  <token_val_as_doub>  expr
 
 // operators, order determins precidence
@@ -64,13 +66,13 @@ line:
         | error '\n' { yyerrok; }
 ;
 
-// types of $$, $1, $2 etc are one of YYSTYPE, i.e. yylval.token_val_as_doub or yylval.token_val_as_symb
+// types of $$, $1, $2 etc will be replaced with one of YYSTYPE, i.e. `yylval.token_val_as_doub` or `yylval.token_val_as_sym` etc.
 // depending on the token
 // '+', '-', etc. don't have values and are omitted
 expr:     TOK_NUM                 { $$ = $1; }
-        | TOK_VAR                 { $$ = $1->symb_val.symb_val_as_var; }
-        | TOK_VAR '=' expr        { $$ = $3; $1->symb_val.symb_val_as_var = $3; }
-        | TOK_FNCT '(' expr ')'   { $$ = (*($1->symb_val.symb_val_as_fun))($3); }
+        | TOK_VAR                 { $$ = $1->sym_val.sym_val_as_var; }
+        | TOK_VAR '=' expr        { $$ = $3; $1->sym_val.sym_val_as_var = $3; }
+        | TOK_FNCT '(' expr ')'   { $$ = (*($1->sym_val.sym_val_as_fun))($3); }
         | expr '+' expr       { $$ = $1 + $3; }
         | expr '-' expr       { $$ = $1 - $3; }
         | expr '*' expr       { $$ = $1 * $3; }
@@ -91,6 +93,7 @@ void yyerror(const string &s) { cout << s << endl; }
 // put arithmetic functions in table
 void init_table()
 {
+  // register functions
   struct Func
   {
     string name;
@@ -99,21 +102,21 @@ void init_table()
 
   Func arith_fncts[] =
   {
-    "sin",  sin,  "cos",  cos,  "tan",  tan,
-    "atan", atan, "log",  log,  "log2", log2,
-    "exp",  exp,  "sqrt", sqrt, "abs",  abs,
+    {"sin",  sin},  {"cos",  cos},  {"tan",  tan},
+    {"atan", atan}, {"log",  log},  {"log2", log2},
+    {"exp",  exp},  {"sqrt", sqrt}, {"abs",  abs},
   };
 
   for (auto &e : arith_fncts) {
-    Sym *ptr = &symb_table[e.name];
-    ptr->symb_type = TOK_FNCT;
-    ptr->symb_val.symb_val_as_fun = e.fun;
+    Sym *ptr = &sym_table[e.name];
+    ptr->sym_type = TOK_FNCT;
+    ptr->sym_val.sym_val_as_fun = e.fun;
   }
 }
 
 // return TOK_NUM, TOK_VAR, TOK_FNCT or 0 (for EOF),
 //   and set yylval.token_val_as_doub for TOK_NUM
-//   and set yylval.token_val_as_symb for TOK_VAR and TOK_FNCT
+//   and set yylval.token_val_as_sym for TOK_VAR and TOK_FNCT
 // or ascii code for single character token
 int yylex()
 {
@@ -145,12 +148,12 @@ int yylex()
 
       ungetc(c, stdin);
 
-      Sym *s = &symb_table[sym_name];  // inserts a default‑constructed entry
-      if (s->symb_type == 0)              // first time we see this name
-          s->symb_type = TOK_VAR;
+      Sym *s = &sym_table[sym_name];  // inserts a default‑constructed entry
+      if (s->sym_type == 0)              // first time we see this name
+          s->sym_type = TOK_VAR;
 
-      yylval.token_val_as_symb = s;
-      return s->symb_type;
+      yylval.token_val_as_sym = s;
+      return s->sym_type;
   }
 
   return c; // single char operator, no value
