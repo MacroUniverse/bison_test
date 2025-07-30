@@ -5,23 +5,24 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-typedef double (*pfun_1doub)(double);
-
-// value type of a sym
-union SymVal
-{
-  double sym_val_as_var;     // value of a TOK_VAR
-  pfun_1doub sym_val_as_fun; // value of a TOK_FNCT
-};
+typedef double (*pfun_000)(double);
 
 // symbol (dynamic typing)
 struct Sym
 {
+  // value type of a sym
+  union SymVal
+  {
+    double sym_var_val_doub;  // for sym_type == TOK_VAR
+    pfun_000 sym_fun_val_ptr; // for sym_type == TOK_FNCT
+  };
+
   int sym_type;   // TOK_VAR or TOK_FNCT
   SymVal sym_val; // exact type determined by sym_type at runtime
 };
 
 // symbol table for TOK_VAR and TOK_FNCT
+// similar to matlab workspace, stores variable values real-time
 map<string, Sym> sym_table;
 
 int yylex(); // the lexer
@@ -34,7 +35,7 @@ void yyerror(const string &); // error handler
 // definition of possible value types of all tokens
 // define `union YYSTYPE`
 %union {
-  // each TOK_* maps to one of these
+  // each TOK_* maps to one of these, (see /* ALL TOKENS */)
   double token_val_as_doub;  // for TOK_NUM
   Sym *token_val_as_sym;  // for TOK_VAR, TOK_FNCT
 }
@@ -43,9 +44,11 @@ void yyerror(const string &); // error handler
 /* ALL TOKENS */
 // single char tokens are implicit
 // define members of `enum yytokentype {};`, aliased `yytoken_kind_t`
-%token <token_val_as_doub>  TOK_NUM
-%token <token_val_as_sym>  TOK_VAR TOK_FNCT
-%type  <token_val_as_doub>  expr
+// map each token type to a field of YYSTYPE
+%token <token_val_as_doub> TOK_NUM
+%token <token_val_as_sym> TOK_VAR TOK_FNCT
+// %type defines a non-token expression
+%type  <token_val_as_doub> expr
 
 // operators, order determins precidence
 %right '='  // right association
@@ -66,20 +69,20 @@ line:
         | error '\n' { yyerrok; }
 ;
 
-// types of $$, $1, $2 etc will be replaced with one of YYSTYPE, i.e. `yylval.token_val_as_doub` or `yylval.token_val_as_sym` etc.
+// types of $$, $1, $2 etc will be replaced with one of YYSTYPE, i.e. `yylval.token_val_as_doub` or `yylval.token_val_as_sym` etc. which depends on `%token <...> ...` or `%type <...> ...` declaration
 // depending on the token
 // '+', '-', etc. don't have values and are omitted
 expr:     TOK_NUM                 { $$ = $1; }
-        | TOK_VAR                 { $$ = $1->sym_val.sym_val_as_var; }
-        | TOK_VAR '=' expr        { $$ = $3; $1->sym_val.sym_val_as_var = $3; }
-        | TOK_FNCT '(' expr ')'   { $$ = (*($1->sym_val.sym_val_as_fun))($3); }
-        | expr '+' expr       { $$ = $1 + $3; }
-        | expr '-' expr       { $$ = $1 - $3; }
-        | expr '*' expr       { $$ = $1 * $3; }
-        | expr '/' expr       { $$ = $1 / $3; }
-        | '-' expr  %prec NEG { $$ = -$2; }
-        | expr '^' expr       { $$ = pow($1, $3); }
-        | '(' expr ')'        { $$ = $2; }
+        | TOK_VAR                 { $$ = $1->sym_val.sym_var_val_doub; }
+        | TOK_VAR '=' expr        { $$ = $3; $1->sym_val.sym_var_val_doub = $3; }
+        | TOK_FNCT '(' expr ')'   { $$ = $1->sym_val.sym_fun_val_ptr($3); }
+        | expr '+' expr           { $$ = $1 + $3; }
+        | expr '-' expr           { $$ = $1 - $3; }
+        | expr '*' expr           { $$ = $1 * $3; }
+        | expr '/' expr           { $$ = $1 / $3; }
+        | '-' expr  %prec NEG     { $$ = -$2; }
+        | expr '^' expr           { $$ = pow($1, $3); }
+        | '(' expr ')'            { $$ = $2; }
 ;
 
 %% /* end of grammar */
@@ -97,7 +100,7 @@ void init_table()
   struct Func
   {
     string name;
-    pfun_1doub fun;
+    pfun_000 fun;
   };
 
   Func arith_fncts[] =
@@ -117,7 +120,7 @@ void init_table()
   {
     Sym *ptr = &sym_table[e.name];
     ptr->sym_type = TOK_FNCT;
-    ptr->sym_val.sym_val_as_fun = e.fun;
+    ptr->sym_val.sym_fun_val_ptr = e.fun;
   }
 }
 
