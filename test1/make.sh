@@ -5,4 +5,8 @@ bison rpcalc.y --output=rpcalc.c
 cc -Wno-incompatible-pointer-types rpcalc.c -lm -o rpcalc.x
 
 bison mfcalc.y --output=mfcalc.cpp
-g++ mfcalc.cpp -lm -o mfcalc.x
+
+# #line mark will disrup CLion break point
+sed -i 's/^#line/\/\/ #line/'  mfcalc.cpp 
+
+g++ -g mfcalc.cpp -lm -o mfcalc.x

@@ -10,14 +10,14 @@ typedef double (*pfun_1doub)(double);
 // value type of a sym
 union SymVal
 {
-  double     sym_val_as_var; // value of a TOK_VAR
+  double sym_val_as_var;     // value of a TOK_VAR
   pfun_1doub sym_val_as_fun; // value of a TOK_FNCT
 };
 
 // symbol (dynamic typing)
 struct Sym
 {
-  int sym_type;  // TOK_VAR or TOK_FNCT
+  int sym_type;   // TOK_VAR or TOK_FNCT
   SymVal sym_val; // exact type determined by sym_type at runtime
 };
 
@@ -101,13 +101,20 @@ void init_table()
   };
 
   Func arith_fncts[] =
-  {
-    {"sin",  sin},  {"cos",  cos},  {"tan",  tan},
-    {"atan", atan}, {"log",  log},  {"log2", log2},
-    {"exp",  exp},  {"sqrt", sqrt}, {"abs",  abs},
-  };
+      {
+          {"sin", sin},
+          {"cos", cos},
+          {"tan", tan},
+          {"atan", atan},
+          {"log", log},
+          {"log2", log2},
+          {"exp", exp},
+          {"sqrt", sqrt},
+          {"abs", abs},
+      };
 
-  for (auto &e : arith_fncts) {
+  for (auto &e : arith_fncts)
+  {
     Sym *ptr = &sym_table[e.name];
     ptr->sym_type = TOK_FNCT;
     ptr->sym_val.sym_val_as_fun = e.fun;
@@ -120,7 +127,8 @@ void init_table()
 // or ascii code for single character token
 int yylex()
 {
-  static string sym_name; sym_name.reserve(40);
+  static string sym_name;
+  sym_name.reserve(40);
   static int length = 0;
   int c;
 
@@ -132,28 +140,31 @@ int yylex()
     return 0;
 
   // parse TOK_NUM
-  if (c == '.' || isdigit(c)) {
+  if (c == '.' || isdigit(c))
+  {
     ungetc(c, stdin);
     scanf("%lf", &yylval.token_val_as_doub);
     return TOK_NUM;
   }
 
   // parse identifier
-  if (isalpha(c)) {
-      sym_name.clear();
-      do {
-          sym_name += c;
-          c = getchar();
-      } while (c != EOF && isalnum(c));
+  if (isalpha(c))
+  {
+    sym_name.clear();
+    do
+    {
+      sym_name += c;
+      c = getchar();
+    } while (c != EOF && isalnum(c));
 
-      ungetc(c, stdin);
+    ungetc(c, stdin);
 
-      Sym *s = &sym_table[sym_name];  // inserts a default‑constructed entry
-      if (s->sym_type == 0)              // first time we see this name
-          s->sym_type = TOK_VAR;
+    Sym *s = &sym_table[sym_name]; // inserts a default‑constructed entry
+    if (s->sym_type == 0)          // first time we see this name
+      s->sym_type = TOK_VAR;
 
-      yylval.token_val_as_sym = s;
-      return s->sym_type;
+    yylval.token_val_as_sym = s;
+    return s->sym_type;
   }
 
   return c; // single char operator, no value
